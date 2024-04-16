@@ -1,27 +1,33 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { PayloadAction, createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { WEATHER_API_KEY } from "../../config";
+import { IWeatherForecastProps } from "../../components/weatherBlock/WeatherBlock.typings";
+import { WeatherState } from "./WeatherSlice.typings";
 
-const WEATHER_API_KEY = '2119091749b44a42ad8130728241204'; // TODO: move to config (gitignore)
-
-export const getWeatherData = createAsyncThunk(
+export const getWeatherData = createAsyncThunk<IWeatherForecastProps | null, { city: string; days: string }>(
   "weather/getWeather",
-  async ({ city, days } : {city: string, days: string}) => { // ?
+  async ({ city, days }, { rejectWithValue }) => {
     try {
       const response = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${city}&days=${days}`);
-      const data = await response.json();
-      return data;
-    } catch (error: any) { // TODO: change types?
-      throw Error(error.message);
+      if (!response.ok) throw new Error('Network response was not ok.');
+      return await response.json() as IWeatherForecastProps;
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        return rejectWithValue(error.message);
+      }
+      return rejectWithValue('An unexpected error occurred');
     }
   }
 );
 
-const weatherSlice = createSlice({
+const initialState: WeatherState = {
+  forecastLoading: false,
+  forecastData: null,
+  forecastError: null,
+};
+
+export const weatherSlice = createSlice({
   name: "weather",
-  initialState: {
-    forecastLoading: false,
-    forecastData: null as any, // TODO: change types?
-    forecastError: null as string | undefined | null,
-  },
+  initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
@@ -30,13 +36,13 @@ const weatherSlice = createSlice({
         state.forecastData = null;
         state.forecastError = null;
       })
-      .addCase(getWeatherData.fulfilled, (state, action) => {
+      .addCase(getWeatherData.fulfilled, (state, action: PayloadAction<IWeatherForecastProps | null>) => {
         state.forecastLoading = false;
         state.forecastData = action.payload;
       })
       .addCase(getWeatherData.rejected, (state, action) => {
         state.forecastLoading = false;
-        state.forecastError = action.error.message;
+        state.forecastError = action.error.message ?? 'Unknown error';
       });
   },
 });

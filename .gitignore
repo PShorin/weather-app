@@ -19,3 +19,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Ignoring the configuration directory in the src folder
+/src/config/
